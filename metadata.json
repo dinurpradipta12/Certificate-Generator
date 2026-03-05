@@ -1,0 +1,5 @@
+{
+  "name": "Bootcamp Grading & Certificate System",
+  "description": "A system for grading bootcamp assessments and generating bulk certificates from spreadsheet data.",
+  "requestFramePermissions": []
+}
