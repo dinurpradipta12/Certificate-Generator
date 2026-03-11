@@ -69,7 +69,7 @@ export default function ExportManager({ config, students }: Props) {
         const x = (field.x / 100) * 1920;
         const y = (field.y / 100) * 1080;
         
-        pdf.text(text, x, y, { align: 'center' });
+        pdf.text(text, x, y, { align: field.align || 'center' });
       });
     };
 

@@ -19,6 +19,7 @@ import ExportManager from './components/ExportManager';
 export default function App() {
   const [activeTab, setActiveTab] = useState<'config' | 'import' | 'design' | 'export'>('config');
   const [config, setConfig] = useState<AppConfig>({
+    defaultProgramName: 'Mini Bootcamp',
     assessmentCategories: [
       {
         id: 'cat-post-test',
@@ -61,10 +62,10 @@ export default function App() {
       },
     ],
     certificateFields: [
-      { id: 'f-name', label: 'Student Name', type: 'name', x: 50, y: 40, fontSize: 32, color: '#000000', bold: true, fontFamily: 'helvetica', page: 1 },
-      { id: 'f-prog', label: 'Program', type: 'program', x: 50, y: 50, fontSize: 24, color: '#000000', bold: false, fontFamily: 'helvetica', page: 1 },
-      { id: 'f-cid', label: 'Certificate ID', type: 'certId', x: 50, y: 60, fontSize: 18, color: '#000000', bold: false, fontFamily: 'helvetica', page: 1 },
-      { id: 'f-per', label: 'Periode', type: 'periode', x: 50, y: 70, fontSize: 18, color: '#000000', bold: false, fontFamily: 'helvetica', page: 1 },
+      { id: 'f-name', label: 'Student Name', type: 'name', x: 50, y: 40, fontSize: 32, color: '#000000', bold: true, fontFamily: 'helvetica', align: 'center', page: 1 },
+      { id: 'f-prog', label: 'Program', type: 'program', x: 50, y: 50, fontSize: 24, color: '#000000', bold: false, fontFamily: 'helvetica', align: 'center', page: 1 },
+      { id: 'f-cid', label: 'Certificate ID', type: 'certId', x: 50, y: 60, fontSize: 18, color: '#000000', bold: false, fontFamily: 'helvetica', align: 'center', page: 1 },
+      { id: 'f-per', label: 'Periode', type: 'periode', x: 50, y: 70, fontSize: 18, color: '#000000', bold: false, fontFamily: 'helvetica', align: 'center', page: 1 },
     ],
     customFonts: [],
     templateImages: {

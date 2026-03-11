@@ -119,7 +119,7 @@ export default function DataImporter({ config, students, setStudents }: Props) {
           return {
             id: `student-${Date.now()}-${index}`,
             name: row[nameHeader] || 'Unknown Student',
-            program: programHeader ? row[programHeader] : 'Bootcamp Program',
+            program: programHeader ? row[programHeader] : (config.defaultProgramName || 'Bootcamp Program'),
             certId: certIdHeader ? row[certIdHeader] : `CERT-${Date.now()}-${index}`,
             periode: periodeHeader ? row[periodeHeader] : '2024',
             scores,

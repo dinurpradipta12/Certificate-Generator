@@ -1,4 +1,4 @@
-import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Settings } from 'lucide-react';
 import { useState } from 'react';
 import type { AppConfig, AssessmentCategory, AssessmentField } from '../types';
 import { cn } from '../utils/cn';
@@ -84,6 +84,29 @@ export default function GradingConfig({ config, setConfig }: Props) {
 
   return (
     <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+            <Settings size={20} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">General Settings</h2>
+            <p className="text-sm text-gray-500">Global configuration for your certificates</p>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Default Program Name</label>
+          <input
+            type="text"
+            value={config.defaultProgramName || ''}
+            onChange={(e) => setConfig({ ...config, defaultProgramName: e.target.value })}
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+            placeholder="e.g. Fullstack Web Development"
+          />
+          <p className="text-xs text-gray-500 mt-2">This name will be used on certificates if the imported CSV doesn't have a Program column.</p>
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between mb-8">
           <div>

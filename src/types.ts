@@ -39,10 +39,12 @@ export interface CertificateField {
   color: string;
   bold: boolean;
   fontFamily: string;
+  align: 'left' | 'center' | 'right';
   page: 1 | 2;
 }
 
 export interface AppConfig {
+  defaultProgramName?: string;
   assessmentCategories: AssessmentCategory[];
   certificateFields: CertificateField[];
   customFonts: CustomFont[];

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type MouseEvent, type ChangeEvent } from 'react';
-import { Upload, Trash2, Move, Type, Palette, Bold, ChevronLeft, ChevronRight, Plus, Type as FontIcon } from 'lucide-react';
+import { Upload, Trash2, Move, Type, Palette, Bold, ChevronLeft, ChevronRight, Plus, Type as FontIcon, AlignLeft, AlignCenter, AlignRight, Pipette } from 'lucide-react';
 import type { AppConfig, CertificateField, CustomFont } from '../types';
 import { cn } from '../utils/cn';
 
@@ -69,6 +69,7 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
       color: '#000000',
       bold: false,
       fontFamily: 'helvetica',
+      align: 'center',
       page: activePage,
     };
     setConfig({
@@ -178,16 +179,18 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
                   key={field.id}
                   onMouseDown={(e) => handleMouseDown(field.id, e)}
                   className={cn(
-                    "absolute transform -translate-x-1/2 -translate-y-1/2 cursor-move select-none p-2 border-2 transition-all",
+                    "absolute cursor-move select-none p-2 border-2 transition-all whitespace-nowrap",
                     selectedFieldId === field.id ? "border-indigo-500 bg-indigo-50/20" : "border-transparent hover:border-indigo-300"
                   )}
                   style={{
                     left: `${field.x}%`,
                     top: `${field.y}%`,
+                    transform: `translate(${field.align === 'left' ? '0' : field.align === 'right' ? '-100%' : '-50%'}, -50%)`,
                     fontSize: `${field.fontSize}px`,
                     color: field.color,
                     fontWeight: field.bold ? 'bold' : 'normal',
                     fontFamily: field.fontFamily,
+                    textAlign: field.align,
                   }}
                 >
                   {field.type.startsWith('category_avg') 
@@ -275,6 +278,30 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
               </select>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Alignment</label>
+              <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                <button
+                  onClick={() => updateField(selectedField.id, { align: 'left' })}
+                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'left' ? "bg-white shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600")}
+                >
+                  <AlignLeft size={16} />
+                </button>
+                <button
+                  onClick={() => updateField(selectedField.id, { align: 'center' })}
+                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'center' ? "bg-white shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600")}
+                >
+                  <AlignCenter size={16} />
+                </button>
+                <button
+                  onClick={() => updateField(selectedField.id, { align: 'right' })}
+                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'right' ? "bg-white shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600")}
+                >
+                  <AlignRight size={16} />
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Font Size</label>
@@ -294,7 +321,24 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
                     onChange={(e) => updateField(selectedField.id, { color: e.target.value })}
                     className="w-10 h-10 p-1 bg-gray-50 border border-gray-100 rounded-lg cursor-pointer"
                   />
-                  <span className="text-xs font-mono text-gray-500">{selectedField.color}</span>
+                  <span className="text-xs font-mono text-gray-500 flex-1">{selectedField.color}</span>
+                  {'EyeDropper' in window && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const eyeDropper = new (window as any).EyeDropper();
+                          const result = await eyeDropper.open();
+                          updateField(selectedField.id, { color: result.sRGBHex });
+                        } catch (e) {
+                          // User canceled
+                        }
+                      }}
+                      className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-lg border border-gray-100 transition-colors cursor-pointer"
+                      title="Pick color from screen"
+                    >
+                      <Pipette size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
