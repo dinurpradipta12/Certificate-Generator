@@ -84,74 +84,68 @@ export default function App() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans">
-      {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 p-6 flex flex-col gap-8 z-50">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
-            <GraduationCap size={24} />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg leading-tight">CertiBatch</h1>
-            <p className="text-xs text-gray-500">Bootcamp Grading</p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-background-base text-foreground font-sans flex flex-col relative overflow-hidden">
+      {/* Ambient Background Layers */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,#0a0a0f_0%,#050506_50%,#020203_100%)]" />
+        <div className="absolute inset-0 bg-grid-pattern" />
+        <div className="absolute inset-0 bg-noise" />
+        
+        {/* Animated Blobs */}
+        <div className="absolute top-[-20%] left-[20%] w-[900px] h-[900px] bg-accent/20 rounded-full blur-[150px] animate-float mix-blend-screen" />
+        <div className="absolute top-[20%] left-[-10%] w-[600px] h-[800px] bg-purple-500/10 rounded-full blur-[120px] animate-float-delayed mix-blend-screen" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[700px] h-[700px] bg-indigo-500/10 rounded-full blur-[100px] animate-float-slow mix-blend-screen" />
+      </div>
 
-        <nav className="flex flex-col gap-1">
+      {/* Floating Menu */}
+      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-surface/80 backdrop-blur-xl border border-border-default shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-2xl px-6 py-4 flex items-center justify-between gap-8 w-[90%] max-w-4xl">
+        <div className="flex flex-col items-center gap-1.5 px-2 border-r border-border-default pr-8">
+          <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center text-white shadow-[0_0_20px_rgba(94,106,210,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]">
+            <GraduationCap size={20} />
+          </div>
+          <span className="font-bold text-[10px] tracking-widest uppercase text-foreground-muted">CertiBatch</span>
+        </div>
+        
+        <div className="flex items-center gap-4 sm:gap-8 flex-1 justify-center">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium cursor-pointer",
-                activeTab === tab.id 
-                  ? "bg-indigo-50 text-indigo-600 shadow-sm" 
-                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                "flex flex-col items-center gap-2 px-4 sm:px-6 py-2 rounded-xl transition-all duration-300 cursor-pointer min-w-[80px] sm:min-w-[100px]",
+                activeTab === tab.id
+                  ? "bg-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
+                  : "text-foreground-muted hover:text-foreground hover:bg-white/5"
               )}
             >
-              <tab.icon size={18} />
-              {tab.label}
+              <tab.icon size={24} className={cn("transition-transform duration-300", activeTab === tab.id && "scale-110 text-accent-bright")} />
+              <span className="text-[11px] font-medium tracking-wide">{tab.label}</span>
             </button>
           ))}
-        </nav>
-
-        <div className="mt-auto p-4 bg-indigo-600 rounded-2xl text-white">
-          <p className="text-xs opacity-80 mb-2">Ready to export?</p>
-          <p className="text-sm font-semibold mb-4">{students.length} Students Loaded</p>
-          <button 
-            onClick={() => setActiveTab('export')}
-            className="w-full py-2 bg-white text-indigo-600 rounded-lg text-xs font-bold hover:bg-opacity-90 transition-colors cursor-pointer"
-          >
-            Generate All
-          </button>
         </div>
+        
+        <div className="w-px h-12 bg-border-default mx-2" />
+        
+        <button
+          onClick={() => setActiveTab('export')}
+          className="flex flex-col items-center gap-2 px-6 py-2 bg-accent text-white rounded-xl font-medium hover:bg-accent-bright transition-all duration-300 cursor-pointer min-w-[100px] shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[0_0_0_1px_rgba(104,114,217,0.6),0_8px_20px_rgba(94,106,210,0.4),inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:-translate-y-0.5"
+        >
+          <Download size={24} />
+          <span className="text-[11px] tracking-wide">Generate ({students.length})</span>
+        </button>
       </div>
 
       {/* Main Content */}
-      <main className="pl-64 min-h-screen">
-        <header className="h-16 border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-40 px-8 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">
-            {tabs.find(t => t.id === activeTab)?.label}
-          </h2>
-          <div className="flex items-center gap-4">
-            <div className="flex -space-x-2">
-              {[1,2,3].map(i => (
-                <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gray-200 overflow-hidden">
-                  <img src={`https://picsum.photos/seed/user${i}/32/32`} alt="User" referrerPolicy="no-referrer" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </header>
-
-        <div className="p-8 max-w-6xl mx-auto">
+      <main className="flex-1 flex flex-col min-h-screen pt-36 relative z-10">
+        <div className="p-4 md:px-8 md:pb-8 w-full max-w-[1600px] mx-auto flex-1 flex flex-col">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -16, scale: 0.98 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 flex flex-col"
             >
               {activeTab === 'config' && (
                 <GradingConfig config={config} setConfig={setConfig} />
@@ -164,7 +158,7 @@ export default function App() {
                 />
               )}
               {activeTab === 'design' && (
-                <CertificateDesigner config={config} setConfig={setConfig} />
+                <CertificateDesigner config={config} setConfig={setConfig} students={students} />
               )}
               {activeTab === 'export' && (
                 <ExportManager config={config} students={students} />

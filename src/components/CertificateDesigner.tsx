@@ -1,14 +1,15 @@
-import { useState, useRef, useEffect, type MouseEvent, type ChangeEvent } from 'react';
+import { useState, useRef, type MouseEvent, type ChangeEvent } from 'react';
 import { Upload, Trash2, Move, Type, Palette, Bold, ChevronLeft, ChevronRight, Plus, Type as FontIcon, AlignLeft, AlignCenter, AlignRight, Pipette } from 'lucide-react';
-import type { AppConfig, CertificateField, CustomFont } from '../types';
+import type { AppConfig, CertificateField, CustomFont, StudentData } from '../types';
 import { cn } from '../utils/cn';
 
 interface Props {
   config: AppConfig;
   setConfig: (config: AppConfig) => void;
+  students: StudentData[];
 }
 
-export default function CertificateDesigner({ config, setConfig }: Props) {
+export default function CertificateDesigner({ config, setConfig, students }: Props) {
   const [activePage, setActivePage] = useState<1 | 2>(1);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -128,120 +129,205 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
     document.addEventListener('mouseup', onMouseUp);
   };
 
+  const getPreviewText = (field: CertificateField) => {
+    if (field.type === 'custom') return field.label;
+    if (field.type === 'date') return new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    const student = students.length > 0 ? students[0] : null;
+    
+    if (!student) {
+      switch (field.type) {
+        case 'name': return 'John Doe';
+        case 'program': return config.defaultProgramName || 'Bootcamp Program';
+        case 'certId': return 'CERT-123456';
+        case 'periode': return 'Jan - Mar 2024';
+        case 'average': return '95';
+        case 'grade': return 'A+';
+        case 'description': return 'Superstar';
+        default: 
+          if (field.type.startsWith('category_avg:')) return '90';
+          return field.label;
+      }
+    }
+
+    switch (field.type) {
+      case 'name': return student.name;
+      case 'program': return student.program || config.defaultProgramName || '';
+      case 'certId': return student.certId;
+      case 'periode': return student.periode;
+      case 'average': return student.finalAverage?.toString() || '0';
+      case 'grade': return student.grade || '-';
+      case 'description': return student.description || '-';
+      default:
+        if (field.type.startsWith('category_avg:')) {
+          const catId = field.type.split(':')[1];
+          return student.categoryAverages?.[catId]?.toString() || '0';
+        }
+        return field.label;
+    }
+  };
+
   const selectedField = config.certificateFields.find(f => f.id === selectedFieldId);
   const currentTemplate = activePage === 1 ? config.templateImages.page1 : config.templateImages.page2;
 
   return (
-    <div className="flex gap-8 h-[calc(100vh-12rem)]">
-      {/* Left Panel: Editor */}
-      <div className="flex-1 flex flex-col gap-6 overflow-hidden">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="flex flex-col gap-6 flex-1 overflow-y-auto pb-10">
+      {/* Top: Editor & Preview */}
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 shrink-0 min-h-[500px]">
+        {/* Left: Editor */}
+        <div className="flex-1 flex flex-col gap-4 bg-surface/80 backdrop-blur-xl rounded-2xl border border-border-default shadow-elevation-low p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActivePage(1)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
+                  activePage === 1 ? "bg-accent text-white shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)]" : "bg-white/5 text-foreground-muted hover:bg-white/10"
+                )}
+              >
+                Page 1 (Front)
+              </button>
+              <button
+                onClick={() => setActivePage(2)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
+                  activePage === 2 ? "bg-accent text-white shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)]" : "bg-white/5 text-foreground-muted hover:bg-white/10"
+                )}
+              >
+                Page 2 (Back)
+              </button>
+            </div>
             <button
-              onClick={() => setActivePage(1)}
-              className={cn(
-                "px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer",
-                activePage === 1 ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-              )}
+              onClick={addField}
+              className="flex items-center gap-2 px-4 py-2 bg-accent/10 text-accent rounded-xl text-sm font-medium hover:bg-accent/20 transition-colors cursor-pointer"
             >
-              Page 1 (Front)
-            </button>
-            <button
-              onClick={() => setActivePage(2)}
-              className={cn(
-                "px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer",
-                activePage === 2 ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-              )}
-            >
-              Page 2 (Back)
+              <Plus size={18} />
+              Add Field
             </button>
           </div>
-          <button
-            onClick={addField}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
-          >
-            <Plus size={18} />
-            Add Field
-          </button>
+
+          <div className="flex-1 bg-surface-elevated rounded-xl overflow-hidden relative flex items-center justify-center p-4 border border-border-default/50">
+            {currentTemplate ? (
+              <div 
+                ref={containerRef}
+                className="relative shadow-elevation-high bg-white max-h-full max-w-full"
+                style={{ backgroundImage: `url(${currentTemplate})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }}
+              >
+                <img src={currentTemplate} className="max-h-full max-w-full opacity-0 pointer-events-none" alt="Template" />
+                
+                {config.certificateFields.filter(f => f.page === activePage).map(field => (
+                  <div
+                    key={field.id}
+                    onMouseDown={(e) => handleMouseDown(field.id, e)}
+                    className={cn(
+                      "absolute cursor-move select-none p-2 border-2 transition-all whitespace-nowrap",
+                      selectedFieldId === field.id ? "border-accent bg-accent/10" : "border-transparent hover:border-accent/50"
+                    )}
+                    style={{
+                      left: `${field.x}%`,
+                      top: `${field.y}%`,
+                      transform: `translate(${field.align === 'left' ? '0' : field.align === 'right' ? '-100%' : '-50%'}, -50%)`,
+                      fontSize: `${field.fontSize}px`,
+                      color: field.color,
+                      fontWeight: field.bold ? 'bold' : 'normal',
+                      fontFamily: field.fontFamily,
+                      textAlign: field.align,
+                    }}
+                  >
+                    {field.type.startsWith('category_avg') 
+                      ? `${config.assessmentCategories.find(c => c.id === field.type.split(':')[1])?.name || 'Category'} Avg`
+                      : field.label}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-foreground-muted shadow-elevation-low border border-border-default">
+                  <Upload size={32} />
+                </div>
+                <p className="text-foreground font-medium">No Template Uploaded</p>
+                <p className="text-sm text-foreground-muted/50 mb-6">Upload an image for Page {activePage}</p>
+                <label className="px-6 py-3 bg-accent text-white rounded-xl font-medium cursor-pointer hover:bg-accent-bright transition-colors shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)]">
+                  Upload Template
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(activePage, e)}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex-1 bg-gray-200 rounded-2xl overflow-hidden relative flex items-center justify-center p-8">
-          {currentTemplate ? (
-            <div 
-              ref={containerRef}
-              className="relative shadow-2xl bg-white aspect-[1.414/1] max-h-full max-w-full"
-              style={{ backgroundImage: `url(${currentTemplate})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat' }}
-            >
-              <img src={currentTemplate} className="max-h-full max-w-full opacity-0 pointer-events-none" alt="Template" />
-              
-              {config.certificateFields.filter(f => f.page === activePage).map(field => (
-                <div
-                  key={field.id}
-                  onMouseDown={(e) => handleMouseDown(field.id, e)}
-                  className={cn(
-                    "absolute cursor-move select-none p-2 border-2 transition-all whitespace-nowrap",
-                    selectedFieldId === field.id ? "border-indigo-500 bg-indigo-50/20" : "border-transparent hover:border-indigo-300"
-                  )}
-                  style={{
-                    left: `${field.x}%`,
-                    top: `${field.y}%`,
-                    transform: `translate(${field.align === 'left' ? '0' : field.align === 'right' ? '-100%' : '-50%'}, -50%)`,
-                    fontSize: `${field.fontSize}px`,
-                    color: field.color,
-                    fontWeight: field.bold ? 'bold' : 'normal',
-                    fontFamily: field.fontFamily,
-                    textAlign: field.align,
-                  }}
-                >
-                  {field.type.startsWith('category_avg') 
-                    ? `${config.assessmentCategories.find(c => c.id === field.type.split(':')[1])?.name || 'Category'} Avg`
-                    : field.label}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400 shadow-sm">
-                <Upload size={32} />
+        {/* Right: Live Preview */}
+        <div className="flex-1 flex flex-col gap-4 bg-surface/80 backdrop-blur-xl rounded-2xl border border-border-default shadow-elevation-low p-4">
+          <div className="flex items-center justify-between px-2 py-1">
+            <h3 className="font-medium text-foreground tracking-tight">Live Preview</h3>
+            <span className="text-xs font-medium px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full">
+              {students.length > 0 ? `Data: ${students[0].name}` : 'Dummy Data'}
+            </span>
+          </div>
+
+          <div className="flex-1 bg-surface-elevated rounded-xl overflow-hidden relative flex items-center justify-center p-4 border border-border-default/50">
+            {currentTemplate ? (
+              <div 
+                className="relative shadow-elevation-high bg-white max-h-full max-w-full pointer-events-none"
+                style={{ backgroundImage: `url(${currentTemplate})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }}
+              >
+                <img src={currentTemplate} className="max-h-full max-w-full opacity-0" alt="Template" />
+                
+                {config.certificateFields.filter(f => f.page === activePage).map(field => (
+                  <div
+                    key={`preview-${field.id}`}
+                    className="absolute whitespace-nowrap"
+                    style={{
+                      left: `${field.x}%`,
+                      top: `${field.y}%`,
+                      transform: `translate(${field.align === 'left' ? '0' : field.align === 'right' ? '-100%' : '-50%'}, -50%)`,
+                      fontSize: `${field.fontSize}px`,
+                      color: field.color,
+                      fontWeight: field.bold ? 'bold' : 'normal',
+                      fontFamily: field.fontFamily,
+                      textAlign: field.align,
+                    }}
+                  >
+                    {getPreviewText(field)}
+                  </div>
+                ))}
               </div>
-              <p className="text-gray-500 font-bold">No Template Uploaded</p>
-              <p className="text-sm text-gray-400 mb-6">Upload an image for Page {activePage}</p>
-              <label className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer hover:bg-indigo-700 transition-colors">
-                Upload Template
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(activePage, e)}
-                />
-              </label>
-            </div>
-          )}
+            ) : (
+              <div className="text-center text-foreground-muted/50">
+                <p>Upload a template to see preview</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Right Panel: Properties */}
-      <div className="w-80 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 overflow-y-auto">
-        <h3 className="font-bold text-lg mb-6">Properties</h3>
+      {/* Bottom: Properties */}
+      <div className="bg-surface/80 backdrop-blur-xl rounded-2xl border border-border-default shadow-elevation-low p-6 shrink-0">
+        <h3 className="font-medium text-lg mb-4 text-foreground tracking-tight">Properties</h3>
         
         {selectedField ? (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Field Label</label>
+          <div className="flex flex-wrap gap-6 items-end">
+            <div className="space-y-2 w-48">
+              <label className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">Field Label</label>
               <input
                 type="text"
                 value={selectedField.label}
                 onChange={(e) => updateField(selectedField.id, { label: e.target.value })}
-                className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-4 py-2 bg-white/5 border border-border-default rounded-xl text-sm focus:ring-2 focus:ring-accent/50 focus:border-accent outline-none text-foreground placeholder-foreground-muted/50 transition-all"
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Data Type</label>
+            <div className="space-y-2 w-48">
+              <label className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">Data Type</label>
               <select
                 value={selectedField.type}
                 onChange={(e) => updateField(selectedField.id, { type: e.target.value as any })}
-                className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-4 py-2 bg-white/5 border border-border-default rounded-xl text-sm focus:ring-2 focus:ring-accent/50 focus:border-accent outline-none text-foreground transition-all"
               >
                 <option value="name">Student Name</option>
                 <option value="program">Program Name</option>
@@ -262,12 +348,12 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Font Family</label>
+            <div className="space-y-2 w-48">
+              <label className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">Font Family</label>
               <select
                 value={selectedField.fontFamily}
                 onChange={(e) => updateField(selectedField.id, { fontFamily: e.target.value })}
-                className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-4 py-2 bg-white/5 border border-border-default rounded-xl text-sm focus:ring-2 focus:ring-accent/50 focus:border-accent outline-none text-foreground transition-all"
               >
                 <option value="helvetica">Helvetica (Standard)</option>
                 <option value="times">Times New Roman</option>
@@ -278,108 +364,100 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Alignment</label>
-              <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
+            <div className="space-y-2 w-40">
+              <label className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">Alignment</label>
+              <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-border-default">
                 <button
                   onClick={() => updateField(selectedField.id, { align: 'left' })}
-                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'left' ? "bg-white shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600")}
+                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'left' ? "bg-white/10 shadow-elevation-low text-accent" : "text-foreground-muted hover:text-foreground")}
                 >
                   <AlignLeft size={16} />
                 </button>
                 <button
                   onClick={() => updateField(selectedField.id, { align: 'center' })}
-                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'center' ? "bg-white shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600")}
+                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'center' ? "bg-white/10 shadow-elevation-low text-accent" : "text-foreground-muted hover:text-foreground")}
                 >
                   <AlignCenter size={16} />
                 </button>
                 <button
                   onClick={() => updateField(selectedField.id, { align: 'right' })}
-                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'right' ? "bg-white shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600")}
+                  className={cn("flex-1 py-1.5 flex justify-center rounded-lg transition-colors cursor-pointer", selectedField.align === 'right' ? "bg-white/10 shadow-elevation-low text-accent" : "text-foreground-muted hover:text-foreground")}
                 >
                   <AlignRight size={16} />
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Font Size</label>
+            <div className="space-y-2 w-24">
+              <label className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">Size</label>
+              <input
+                type="number"
+                value={selectedField.fontSize}
+                onChange={(e) => updateField(selectedField.id, { fontSize: parseInt(e.target.value) })}
+                className="w-full px-4 py-2 bg-white/5 border border-border-default rounded-xl text-sm focus:ring-2 focus:ring-accent/50 focus:border-accent outline-none text-foreground transition-all"
+              />
+            </div>
+
+            <div className="space-y-2 w-36">
+              <label className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">Color</label>
+              <div className="flex items-center gap-2">
                 <input
-                  type="number"
-                  value={selectedField.fontSize}
-                  onChange={(e) => updateField(selectedField.id, { fontSize: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none"
+                  type="color"
+                  value={selectedField.color}
+                  onChange={(e) => updateField(selectedField.id, { color: e.target.value })}
+                  className="w-10 h-10 p-1 bg-white/5 border border-border-default rounded-lg cursor-pointer shrink-0"
                 />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={selectedField.color}
-                    onChange={(e) => updateField(selectedField.id, { color: e.target.value })}
-                    className="w-10 h-10 p-1 bg-gray-50 border border-gray-100 rounded-lg cursor-pointer"
-                  />
-                  <span className="text-xs font-mono text-gray-500 flex-1">{selectedField.color}</span>
-                  {'EyeDropper' in window && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const eyeDropper = new (window as any).EyeDropper();
-                          const result = await eyeDropper.open();
-                          updateField(selectedField.id, { color: result.sRGBHex });
-                        } catch (e) {
-                          // User canceled
-                        }
-                      }}
-                      className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-500 rounded-lg border border-gray-100 transition-colors cursor-pointer"
-                      title="Pick color from screen"
-                    >
-                      <Pipette size={16} />
-                    </button>
-                  )}
-                </div>
+                {'EyeDropper' in window && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const eyeDropper = new (window as any).EyeDropper();
+                        const result = await eyeDropper.open();
+                        updateField(selectedField.id, { color: result.sRGBHex });
+                      } catch (e) {}
+                    }}
+                    className="p-2 bg-white/5 hover:bg-white/10 text-foreground-muted rounded-lg border border-border-default transition-colors cursor-pointer"
+                    title="Pick color from screen"
+                  >
+                    <Pipette size={16} />
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <span className="text-sm font-bold text-gray-700">Bold Text</span>
+            <div className="space-y-2 w-24">
+              <label className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider">Bold</label>
               <button
                 onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
                 className={cn(
-                  "w-12 h-6 rounded-full transition-all relative cursor-pointer",
-                  selectedField.bold ? "bg-indigo-600" : "bg-gray-300"
+                  "w-12 h-10 rounded-xl transition-all relative cursor-pointer flex items-center justify-center",
+                  selectedField.bold ? "bg-accent text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]" : "bg-white/5 text-foreground-muted border border-border-default"
                 )}
               >
-                <div className={cn(
-                  "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                  selectedField.bold ? "left-7" : "left-1"
-                )} />
+                <Bold size={18} />
               </button>
             </div>
 
-            <div className="pt-6 border-t border-gray-100">
+            <div className="pb-1">
               <button
                 onClick={() => removeField(selectedField.id)}
-                className="w-full py-3 text-red-500 font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                className="h-10 px-4 text-red-400 font-medium text-sm flex items-center justify-center gap-2 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-500/20"
               >
                 <Trash2 size={16} />
-                Remove Field
+                Remove
               </button>
             </div>
           </div>
         ) : (
-          <div className="text-center py-12">
-            <Type className="mx-auto text-gray-300 mb-4" size={48} />
-            <p className="text-sm text-gray-400">Select a field on the canvas to edit its properties.</p>
+          <div className="text-center py-6 bg-white/5 rounded-xl border border-border-default border-dashed">
+            <p className="text-sm text-foreground-muted">Select a field on the canvas to edit its properties.</p>
           </div>
         )}
 
-        <div className="mt-8 pt-6 border-t border-gray-100 space-y-4">
-          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Assets</h4>
+        <div className="mt-6 pt-6 border-t border-border-default flex flex-wrap gap-4 items-center">
+          <h4 className="text-[10px] font-bold text-foreground-muted uppercase tracking-wider mr-2">Assets</h4>
           
-          <label className="w-full py-3 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors cursor-pointer">
+          <label className="px-4 py-2 bg-white/5 text-foreground-muted rounded-xl font-medium text-sm flex items-center gap-2 hover:bg-white/10 hover:text-foreground transition-colors cursor-pointer border border-border-default">
             <Upload size={16} />
             Replace Template
             <input
@@ -390,7 +468,7 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
             />
           </label>
 
-          <label className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors cursor-pointer">
+          <label className="px-4 py-2 bg-accent/10 text-accent rounded-xl font-medium text-sm flex items-center gap-2 hover:bg-accent/20 transition-colors cursor-pointer border border-accent/20">
             <FontIcon size={16} />
             Upload Custom Font
             <input
@@ -402,11 +480,11 @@ export default function CertificateDesigner({ config, setConfig }: Props) {
           </label>
           
           {config.customFonts.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold text-gray-400 uppercase">Uploaded Fonts</p>
+            <div className="flex items-center gap-2 ml-4">
+              <span className="text-[10px] font-bold text-foreground-muted uppercase">Fonts:</span>
               <div className="flex flex-wrap gap-2">
                 {config.customFonts.map(font => (
-                  <div key={font.id} className="px-2 py-1 bg-gray-100 rounded text-[10px] font-medium text-gray-600">
+                  <div key={font.id} className="px-2 py-1 bg-white/5 border border-border-default rounded text-[10px] font-medium text-foreground-muted">
                     {font.name}
                   </div>
                 ))}

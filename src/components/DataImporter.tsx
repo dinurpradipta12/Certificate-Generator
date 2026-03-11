@@ -151,11 +151,11 @@ export default function DataImporter({ config, students, setStudents }: Props) {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
+      <div className="bg-surface/80 backdrop-blur-xl rounded-2xl p-8 border border-border-default shadow-elevation-low">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-bold">Import Student Data</h3>
-            <p className="text-sm text-gray-500">Upload a CSV file with student names and scores.</p>
+            <h3 className="text-xl font-medium tracking-tight text-foreground">Import Student Data</h3>
+            <p className="text-sm text-foreground-muted">Upload a CSV file with student names and scores.</p>
           </div>
           <button
             onClick={() => {
@@ -183,7 +183,7 @@ export default function DataImporter({ config, students, setStudents }: Props) {
               link.download = 'bootcamp_recap_sample.csv';
               link.click();
             }}
-            className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+            className="text-xs font-medium text-accent hover:text-accent-bright flex items-center gap-1 cursor-pointer transition-colors"
           >
             <Download size={14} />
             Download Recap Sample CSV
@@ -197,7 +197,7 @@ export default function DataImporter({ config, students, setStudents }: Props) {
           onClick={() => fileInputRef.current?.click()}
           className={cn(
             "border-2 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer",
-            isDragging ? "border-indigo-500 bg-indigo-50" : "border-gray-200 hover:border-indigo-400 hover:bg-gray-50"
+            isDragging ? "border-accent bg-accent/10" : "border-border-default hover:border-accent/50 hover:bg-white/5"
           )}
         >
           <input
@@ -207,17 +207,17 @@ export default function DataImporter({ config, students, setStudents }: Props) {
             accept=".csv"
             className="hidden"
           />
-          <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
+          <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center text-accent shadow-[inset_0_0_20px_rgba(94,106,210,0.1)]">
             <Upload size={32} />
           </div>
           <div className="text-center">
-            <p className="font-bold text-gray-700">Click to upload or drag and drop</p>
-            <p className="text-sm text-gray-400 mt-1">Only CSV files are supported</p>
+            <p className="font-medium text-foreground">Click to upload or drag and drop</p>
+            <p className="text-sm text-foreground-muted/50 mt-1">Only CSV files are supported</p>
           </div>
         </div>
 
         {error && (
-          <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm">
+          <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400 text-sm">
             <AlertCircle size={18} />
             {error}
           </div>
@@ -225,12 +225,12 @@ export default function DataImporter({ config, students, setStudents }: Props) {
       </div>
 
       {students.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-            <h4 className="font-bold">Imported Students ({students.length})</h4>
+        <div className="bg-surface/80 backdrop-blur-xl rounded-2xl border border-border-default shadow-elevation-low overflow-hidden">
+          <div className="p-6 border-b border-border-default flex items-center justify-between">
+            <h4 className="font-medium text-foreground">Imported Students ({students.length})</h4>
             <button
               onClick={() => setStudents([])}
-              className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1 cursor-pointer"
+              className="text-xs font-medium text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer transition-colors"
             >
               <Trash2 size={14} />
               Clear All
@@ -238,7 +238,7 @@ export default function DataImporter({ config, students, setStudents }: Props) {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-500 font-medium">
+              <thead className="bg-white/5 text-foreground-muted font-medium">
                 <tr>
                   <th className="px-6 py-4">Name</th>
                   {config.assessmentCategories.map(c => (
@@ -249,26 +249,26 @@ export default function DataImporter({ config, students, setStudents }: Props) {
                   <th className="px-6 py-4">Description</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border-default">
                 {students.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-gray-900">{student.name}</td>
+                  <tr key={student.id} className="hover:bg-white/5 transition-colors">
+                    <td className="px-6 py-4 font-medium text-foreground">{student.name}</td>
                     {config.assessmentCategories.map(c => (
-                      <td key={c.id} className="px-6 py-4 text-gray-600">{student.categoryAverages[c.id] || 0}</td>
+                      <td key={c.id} className="px-6 py-4 text-foreground-muted">{student.categoryAverages[c.id] || 0}</td>
                     ))}
-                    <td className="px-6 py-4 font-bold text-indigo-600">{student.finalAverage}</td>
+                    <td className="px-6 py-4 font-bold text-accent">{student.finalAverage}</td>
                     <td className="px-6 py-4">
                       <span className={cn(
-                        "px-2 py-1 rounded-lg text-xs font-bold",
-                        student.grade.startsWith('A') ? "bg-green-100 text-green-700" :
-                        student.grade.startsWith('B') ? "bg-blue-100 text-blue-700" :
-                        student.grade.startsWith('C') ? "bg-yellow-100 text-yellow-700" :
-                        "bg-red-100 text-red-700"
+                        "px-2 py-1 rounded-lg text-xs font-medium",
+                        student.grade.startsWith('A') ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                        student.grade.startsWith('B') ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                        student.grade.startsWith('C') ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                        "bg-red-500/10 text-red-400 border border-red-500/20"
                       )}>
                         {student.grade}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-xs italic text-gray-500">{student.description}</td>
+                    <td className="px-6 py-4 text-xs italic text-foreground-muted/50">{student.description}</td>
                   </tr>
                 ))}
               </tbody>

@@ -14,21 +14,51 @@ export default function ExportManager({ config, students }: Props) {
   const [progress, setProgress] = useState(0);
   const [previewStudent, setPreviewStudent] = useState<StudentData | null>(null);
 
+  const getImageDimensions = (dataUrl: string): Promise<{ width: number, height: number }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+      };
+      img.src = dataUrl;
+    });
+  };
+
   const generatePDF = async (student: StudentData): Promise<Blob> => {
+    if (!config.templateImages.page1) throw new Error("Template missing");
+
+    const dimensions = await getImageDimensions(config.templateImages.page1);
+    let { width, height } = dimensions;
+    
+    // Cap at 2K (2048)
+    const MAX_DIMENSION = 2048;
+    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+      if (width > height) {
+        height = (height / width) * MAX_DIMENSION;
+        width = MAX_DIMENSION;
+      } else {
+        width = (width / height) * MAX_DIMENSION;
+        height = MAX_DIMENSION;
+      }
+    }
+
+    const orientation = width > height ? 'landscape' : 'portrait';
+
     const pdf = new jsPDF({
-      orientation: 'landscape',
+      orientation: orientation,
       unit: 'px',
-      format: [1920, 1080], // HD resolution
+      format: [width, height],
     });
 
     const renderPage = async (page: 1 | 2) => {
       const template = page === 1 ? config.templateImages.page1 : config.templateImages.page2;
       if (!template) return;
 
-      if (page === 2) pdf.addPage([1920, 1080], 'landscape');
+      if (page === 2) pdf.addPage([width, height], orientation);
 
       // Add background image
-      pdf.addImage(template, 'PNG', 0, 0, 1920, 1080);
+      const format = template.substring("data:image/".length, template.indexOf(";base64")).toUpperCase();
+      pdf.addImage(template, format === 'JPEG' ? 'JPEG' : format === 'JPG' ? 'JPEG' : 'PNG', 0, 0, width, height);
 
       // Add fields
       const fields = config.certificateFields.filter(f => f.page === page);
@@ -40,7 +70,7 @@ export default function ExportManager({ config, students }: Props) {
         } else {
           switch (field.type) {
             case 'name': text = student.name; break;
-            case 'program': text = student.program; break;
+            case 'program': text = student.program || config.defaultProgramName || ''; break;
             case 'certId': text = student.certId; break;
             case 'periode': text = student.periode; break;
             case 'average': text = student.finalAverage.toString(); break;
@@ -63,11 +93,13 @@ export default function ExportManager({ config, students }: Props) {
           pdf.setFont(field.fontFamily, field.bold ? 'bold' : 'normal');
         }
 
-        pdf.setFontSize(field.fontSize * 2); // Scale font for HD
+        // Scale font size based on the export height (assuming 540px was the baseline for 1x font size)
+        const scaleFactor = height / 540;
+        pdf.setFontSize(field.fontSize * scaleFactor);
         pdf.setTextColor(field.color);
         
-        const x = (field.x / 100) * 1920;
-        const y = (field.y / 100) * 1080;
+        const x = (field.x / 100) * width;
+        const y = (field.y / 100) * height;
         
         pdf.text(text, x, y, { align: field.align || 'center' });
       });
@@ -116,20 +148,20 @@ export default function ExportManager({ config, students }: Props) {
 
   return (
     <div className="space-y-8">
-      <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
+      <div className="bg-surface/80 backdrop-blur-xl rounded-2xl p-8 border border-border-default shadow-elevation-low">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h3 className="text-xl font-bold">Export Certificates</h3>
-            <p className="text-sm text-gray-500">Generate and download certificates for all students.</p>
+            <h3 className="text-xl font-medium tracking-tight text-foreground">Export Certificates</h3>
+            <p className="text-sm text-foreground-muted">Generate and download certificates for all students.</p>
           </div>
           <button
             onClick={handleExportAll}
             disabled={isGenerating || students.length === 0 || !config.templateImages.page1}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer",
+              "flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition-all cursor-pointer",
               isGenerating || students.length === 0 || !config.templateImages.page1
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200"
+                ? "bg-white/5 text-foreground-muted/50 cursor-not-allowed border border-border-default"
+                : "bg-accent text-white hover:bg-accent-bright shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[0_0_0_1px_rgba(104,114,217,0.6),0_8px_20px_rgba(94,106,210,0.4),inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:-translate-y-0.5"
             )}
           >
             {isGenerating ? (
@@ -147,7 +179,7 @@ export default function ExportManager({ config, students }: Props) {
         </div>
 
         {!config.templateImages.page1 && (
-          <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-xl flex items-center gap-3 text-yellow-700 text-sm mb-6">
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-3 text-amber-400 text-sm mb-6">
             <AlertCircle size={18} />
             Please upload at least Page 1 of the certificate template in the Design tab.
           </div>
@@ -157,20 +189,20 @@ export default function ExportManager({ config, students }: Props) {
           {students.map((student) => (
             <div
               key={student.id}
-              className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between group hover:bg-white hover:shadow-md transition-all"
+              className="p-4 bg-white/5 rounded-2xl border border-border-default flex items-center justify-between group hover:bg-white/10 hover:shadow-elevation-medium transition-all"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 font-bold border border-gray-100">
+                <div className="w-10 h-10 bg-surface rounded-xl flex items-center justify-center text-accent font-bold border border-border-default shadow-[inset_0_0_20px_rgba(94,106,210,0.1)]">
                   {student.grade}
                 </div>
                 <div>
-                  <p className="font-bold text-sm text-gray-900">{student.name}</p>
-                  <p className="text-xs text-gray-500">Avg: {student.finalAverage}</p>
+                  <p className="font-medium text-sm text-foreground">{student.name}</p>
+                  <p className="text-xs text-foreground-muted">Avg: {student.finalAverage}</p>
                 </div>
               </div>
               <button
                 onClick={() => handlePreview(student)}
-                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all cursor-pointer"
+                className="p-2 text-foreground-muted/50 hover:text-accent hover:bg-accent/10 rounded-lg transition-all cursor-pointer"
                 title="Preview PDF"
               >
                 <Eye size={18} />
@@ -179,18 +211,18 @@ export default function ExportManager({ config, students }: Props) {
           ))}
 
           {students.length === 0 && (
-            <div className="col-span-full py-12 text-center border-2 border-dashed border-gray-200 rounded-2xl">
-              <FileText className="mx-auto text-gray-300 mb-2" size={32} />
-              <p className="text-gray-400 text-sm">No student data imported yet.</p>
+            <div className="col-span-full py-12 text-center border-2 border-dashed border-border-default rounded-2xl bg-white/5">
+              <FileText className="mx-auto text-foreground-muted/30 mb-2" size={32} />
+              <p className="text-foreground-muted text-sm">No student data imported yet.</p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="bg-indigo-600 rounded-2xl p-8 text-white relative overflow-hidden">
+      <div className="bg-accent rounded-2xl p-8 text-white relative overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
         <div className="relative z-10">
-          <h4 className="text-xl font-bold mb-2">Bulk Processing</h4>
-          <p className="text-indigo-100 text-sm max-w-md">
+          <h4 className="text-xl font-medium tracking-tight mb-2">Bulk Processing</h4>
+          <p className="text-white/80 text-sm max-w-md">
             The system will generate individual PDF files for each student. 
             Make sure to allow multiple downloads in your browser settings.
           </p>
