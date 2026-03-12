@@ -64,11 +64,49 @@ export default function ExportManager({ config, students }: Props) {
 
       if (page === 2) pdf.addPage([width, height], orientation);
 
-      // Add background image
-      const format = template.substring("data:image/".length, template.indexOf(";base64")).toUpperCase();
-      pdf.addImage(template, format === 'JPEG' ? 'JPEG' : format === 'JPG' ? 'JPEG' : 'PNG', 0, 0, width, height, undefined, 'FAST');
+      // Ensure custom fonts are loaded in the browser's document.fonts
+      if ('fonts' in document) {
+        for (const font of config.customFonts) {
+          let isLoaded = false;
+          document.fonts.forEach((f) => {
+            if (f.family === font.name || f.family === `"${font.name}"`) isLoaded = true;
+          });
+          if (!isLoaded) {
+            try {
+              const fontFace = new FontFace(font.name, `url(${font.data})`);
+              const loadedFace = await fontFace.load();
+              document.fonts.add(loadedFace);
+            } catch (e) {
+              console.error(`Failed to load font ${font.name} into browser`, e);
+            }
+          }
+        }
+        await document.fonts.ready;
+      }
 
-      // Add fields
+      // Create a canvas to draw the template and text
+      const canvas = document.createElement('canvas');
+      // Use a higher resolution for the canvas to ensure text is crisp
+      const scale = 2; 
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Fill white background first (in case of transparent PNG)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw background image
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = template;
+      });
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Draw fields
       const fields = config.certificateFields.filter(f => f.page === page);
       fields.forEach(field => {
         let text = '';
@@ -89,29 +127,25 @@ export default function ExportManager({ config, students }: Props) {
           }
         }
 
-        // Handle custom fonts
-        const isCustomFont = config.customFonts.some(f => f.name === field.fontFamily);
-        if (isCustomFont) {
-          const font = config.customFonts.find(f => f.name === field.fontFamily)!;
-          const fontData = font.data.split(',')[1];
-          pdf.addFileToVFS(`${font.name}.ttf`, fontData);
-          pdf.addFont(`${font.name}.ttf`, font.name, 'normal');
-          pdf.setFont(font.name, 'normal');
-        } else {
-          pdf.setFont(field.fontFamily, field.bold ? 'bold' : 'normal');
-        }
-
         // Scale font size based on the export height (assuming 540px was the baseline for 1x font size)
         const scaleFactor = height / 540;
-        // jsPDF setFontSize takes points (pt). 1px = 0.75pt.
-        pdf.setFontSize(field.fontSize * scaleFactor * 0.75);
-        pdf.setTextColor(field.color);
+        // Apply canvas scale
+        const fontSizePx = field.fontSize * scaleFactor * scale;
         
-        const x = (field.x / 100) * width;
-        const y = (field.y / 100) * height;
+        ctx.font = `${field.bold ? 'bold ' : ''}${fontSizePx}px "${field.fontFamily}", sans-serif`;
+        ctx.fillStyle = field.color;
+        ctx.textAlign = field.align as CanvasTextAlign;
+        ctx.textBaseline = 'middle';
         
-        pdf.text(String(text || ''), x, y, { align: field.align || 'center', baseline: 'middle' });
+        const x = (field.x / 100) * canvas.width;
+        const y = (field.y / 100) * canvas.height;
+        
+        ctx.fillText(String(text || ''), x, y);
       });
+
+      // Convert canvas to image and add to PDF
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, width, height, undefined, 'FAST');
     };
 
     await renderPage(1);
