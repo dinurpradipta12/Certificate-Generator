@@ -47,6 +47,8 @@ export default function DataImporter({ config, students, setStudents }: Props) {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: (header) => header.replace(/^\uFEFF/, '').trim(),
+      transform: (value) => typeof value === 'string' ? value.trim() : value,
       complete: (results) => {
         const { data, meta } = results;
         
@@ -56,15 +58,15 @@ export default function DataImporter({ config, students, setStudents }: Props) {
         }
 
         const headers = meta.fields || [];
-        const nameHeader = headers.find(h => h.toLowerCase() === 'nama' || h.toLowerCase().includes('name'));
+        const nameHeader = headers.find(h => h.toLowerCase().includes('nama') || h.toLowerCase().includes('name'));
         const programHeader = headers.find(h => h.toLowerCase().includes('program'));
-        const certIdHeader = headers.find(h => h.toLowerCase().includes('no credentials') || h.toLowerCase().includes('id') || h.toLowerCase().includes('certificate'));
-        const periodeHeader = headers.find(h => h.toLowerCase() === 'periode' || h.toLowerCase().includes('period'));
+        const certIdHeader = headers.find(h => h.toLowerCase().includes('no credentials') || h.toLowerCase().includes('id') || h.toLowerCase().includes('certificate') || h.toLowerCase().includes('kredensial'));
+        const periodeHeader = headers.find(h => h.toLowerCase().includes('periode') || h.toLowerCase().includes('period'));
         
         // Pre-calculated headers
-        const finalAvgHeader = headers.find(h => h.toLowerCase() === 'rata-rata nilai' || h.toLowerCase() === 'average' || h.toLowerCase() === 'final average');
-        const gradeHeader = headers.find(h => h.toLowerCase() === 'grade');
-        const descHeader = headers.find(h => h.toLowerCase() === 'keterangan' || h.toLowerCase() === 'description');
+        const finalAvgHeader = headers.find(h => h.toLowerCase().includes('rata-rata nilai') || h.toLowerCase().includes('average') || h.toLowerCase().includes('final average'));
+        const gradeHeader = headers.find(h => h.toLowerCase().includes('grade') || h.toLowerCase().includes('nilai huruf'));
+        const descHeader = headers.find(h => h.toLowerCase().includes('keterangan') || h.toLowerCase().includes('description'));
 
         if (!nameHeader) {
           setError('Could not find a "Nama" or "Name" column in the CSV.');
@@ -241,6 +243,8 @@ export default function DataImporter({ config, students, setStudents }: Props) {
               <thead className="bg-white/5 text-foreground-muted font-medium">
                 <tr>
                   <th className="px-6 py-4">Name</th>
+                  <th className="px-6 py-4">Periode</th>
+                  <th className="px-6 py-4">Cert ID</th>
                   {config.assessmentCategories.map(c => (
                     <th key={c.id} className="px-6 py-4">{c.name} (Avg)</th>
                   ))}
@@ -253,6 +257,8 @@ export default function DataImporter({ config, students, setStudents }: Props) {
                 {students.map((student) => (
                   <tr key={student.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4 font-medium text-foreground">{student.name}</td>
+                    <td className="px-6 py-4 text-foreground-muted">{student.periode}</td>
+                    <td className="px-6 py-4 text-foreground-muted">{student.certId}</td>
                     {config.assessmentCategories.map(c => (
                       <td key={c.id} className="px-6 py-4 text-foreground-muted">{student.categoryAverages[c.id] || 0}</td>
                     ))}
