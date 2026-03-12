@@ -1,4 +1,4 @@
-import { useState, useRef, type MouseEvent, type ChangeEvent } from 'react';
+import { useState, useRef, useEffect, type MouseEvent, type ChangeEvent } from 'react';
 import { Upload, Trash2, Move, Type, Palette, Bold, ChevronLeft, ChevronRight, Plus, Type as FontIcon, AlignLeft, AlignCenter, AlignRight, Pipette } from 'lucide-react';
 import type { AppConfig, CertificateField, CustomFont, StudentData } from '../types';
 import { cn } from '../utils/cn';
@@ -13,6 +13,48 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
   const [activePage, setActivePage] = useState<1 | 2>(1);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!selectedFieldId) return;
+      
+      // Prevent default scrolling when using arrow keys
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+      }
+
+      const field = config.certificateFields.find(f => f.id === selectedFieldId);
+      if (!field) return;
+
+      // Move by 1% per click
+      const step = 1;
+
+      let newX = field.x;
+      let newY = field.y;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          newY = Math.max(0, field.y - step);
+          break;
+        case 'ArrowDown':
+          newY = Math.min(100, field.y + step);
+          break;
+        case 'ArrowLeft':
+          newX = Math.max(0, field.x - step);
+          break;
+        case 'ArrowRight':
+          newX = Math.min(100, field.x + step);
+          break;
+        default:
+          return;
+      }
+
+      updateField(selectedFieldId, { x: newX, y: newY });
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedFieldId, config.certificateFields]);
 
   const handleImageUpload = (page: 1 | 2, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
