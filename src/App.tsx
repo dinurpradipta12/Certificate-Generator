@@ -98,45 +98,42 @@ export default function App() {
       </div>
 
       {/* Floating Menu */}
-      <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-surface/80 backdrop-blur-xl border border-border-default shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-2xl px-6 py-4 flex items-center justify-between gap-8 w-[90%] max-w-4xl">
-        <div className="flex flex-col items-center gap-1.5 px-2 border-r border-border-default pr-8">
-          <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center text-white shadow-[0_0_20px_rgba(94,106,210,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]">
-            <GraduationCap size={20} />
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface/80 backdrop-blur-xl border border-border-default shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-full p-2 flex items-center gap-1 sm:gap-2 w-[95%] md:w-auto max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-2 sm:px-3 shrink-0">
+          <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-white shadow-[0_0_15px_rgba(94,106,210,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]">
+            <GraduationCap size={16} />
           </div>
-          <span className="font-bold text-[10px] tracking-widest uppercase text-foreground-muted">CertiBatch</span>
+          <span className="font-bold text-xs tracking-widest uppercase text-foreground hidden lg:block">CertiBatch</span>
         </div>
         
-        <div className="flex items-center gap-4 sm:gap-8 flex-1 justify-center">
+        <div className="w-px h-6 bg-border-default shrink-0 hidden sm:block" />
+        
+        {/* Tabs */}
+        <div className="flex items-center gap-1 shrink-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex flex-col items-center gap-2 px-4 sm:px-6 py-2 rounded-xl transition-all duration-300 cursor-pointer min-w-[80px] sm:min-w-[100px]",
+                "flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full transition-all duration-300 cursor-pointer",
                 activeTab === tab.id
                   ? "bg-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
                   : "text-foreground-muted hover:text-foreground hover:bg-white/5"
               )}
             >
-              <tab.icon size={24} className={cn("transition-transform duration-300", activeTab === tab.id && "scale-110 text-accent-bright")} />
-              <span className="text-[11px] font-medium tracking-wide">{tab.label}</span>
+              <tab.icon size={16} className={cn("transition-transform duration-300", activeTab === tab.id && "text-accent-bright")} />
+              <span className={cn(
+                "text-xs font-medium tracking-wide",
+                activeTab === tab.id ? "block" : "hidden md:block"
+              )}>{tab.label}</span>
             </button>
           ))}
         </div>
-        
-        <div className="w-px h-12 bg-border-default mx-2" />
-        
-        <button
-          onClick={() => setActiveTab('export')}
-          className="flex flex-col items-center gap-2 px-6 py-2 bg-accent text-white rounded-xl font-medium hover:bg-accent-bright transition-all duration-300 cursor-pointer min-w-[100px] shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[0_0_0_1px_rgba(104,114,217,0.6),0_8px_20px_rgba(94,106,210,0.4),inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:-translate-y-0.5"
-        >
-          <Download size={24} />
-          <span className="text-[11px] tracking-wide">Export ({students.length})</span>
-        </button>
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-h-screen pt-36 relative z-10">
+      <main className="flex-1 flex flex-col min-h-screen pt-28 relative z-10">
         <div className="p-4 md:px-8 md:pb-8 w-full max-w-[1600px] mx-auto flex-1 flex flex-col">
           <AnimatePresence mode="wait">
             <motion.div
