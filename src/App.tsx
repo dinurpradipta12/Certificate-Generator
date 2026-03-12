@@ -131,7 +131,7 @@ export default function App() {
           className="flex flex-col items-center gap-2 px-6 py-2 bg-accent text-white rounded-xl font-medium hover:bg-accent-bright transition-all duration-300 cursor-pointer min-w-[100px] shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[0_0_0_1px_rgba(104,114,217,0.6),0_8px_20px_rgba(94,106,210,0.4),inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:-translate-y-0.5"
         >
           <Download size={24} />
-          <span className="text-[11px] tracking-wide">Generate ({students.length})</span>
+          <span className="text-[11px] tracking-wide">Export ({students.length})</span>
         </button>
       </div>
 

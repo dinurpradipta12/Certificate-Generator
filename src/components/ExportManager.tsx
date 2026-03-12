@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Download, FileText, CheckCircle2, Loader2, Eye, AlertCircle } from 'lucide-react';
 import { jsPDF } from 'jspdf';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import type { AppConfig, StudentData, CertificateField } from '../types';
 import { cn } from '../utils/cn';
 
@@ -30,8 +32,8 @@ export default function ExportManager({ config, students }: Props) {
     const dimensions = await getImageDimensions(config.templateImages.page1);
     let { width, height } = dimensions;
     
-    // Cap at 2K (2048)
-    const MAX_DIMENSION = 2048;
+    // Cap at 1600 to make the application lighter and faster
+    const MAX_DIMENSION = 1600;
     if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
       if (width > height) {
         height = (height / width) * MAX_DIMENSION;
@@ -48,6 +50,7 @@ export default function ExportManager({ config, students }: Props) {
       orientation: orientation,
       unit: 'px',
       format: [width, height],
+      compress: true, // Enable compression to reduce file size
     });
 
     const renderPage = async (page: 1 | 2) => {
@@ -58,7 +61,7 @@ export default function ExportManager({ config, students }: Props) {
 
       // Add background image
       const format = template.substring("data:image/".length, template.indexOf(";base64")).toUpperCase();
-      pdf.addImage(template, format === 'JPEG' ? 'JPEG' : format === 'JPG' ? 'JPEG' : 'PNG', 0, 0, width, height);
+      pdf.addImage(template, format === 'JPEG' ? 'JPEG' : format === 'JPG' ? 'JPEG' : 'PNG', 0, 0, width, height, undefined, 'FAST');
 
       // Add fields
       const fields = config.certificateFields.filter(f => f.page === page);
@@ -119,20 +122,23 @@ export default function ExportManager({ config, students }: Props) {
     setProgress(0);
 
     try {
+      const zip = new JSZip();
+      
       for (let i = 0; i < students.length; i++) {
         const student = students[i];
         const blob = await generatePDF(student);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Certificate_${student.name.replace(/\s+/g, '_')}.pdf`;
-        link.click();
-        URL.revokeObjectURL(url);
+        const fileName = `Certificate_${student.name.replace(/\s+/g, '_')}.pdf`;
+        
+        zip.file(fileName, blob);
         
         setProgress(Math.round(((i + 1) / students.length) * 100));
-        // Small delay to prevent browser from blocking multiple downloads
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Small delay to allow UI to update and prevent blocking
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
+      
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      saveAs(zipBlob, 'Certificates.zip');
+      
     } catch (error) {
       console.error('Export failed:', error);
     } finally {
@@ -144,6 +150,16 @@ export default function ExportManager({ config, students }: Props) {
     const blob = await generatePDF(student);
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
+  };
+
+  const handleDownloadSingle = async (student: StudentData) => {
+    try {
+      const blob = await generatePDF(student);
+      const fileName = `Certificate_${student.name.replace(/\s+/g, '_')}.pdf`;
+      saveAs(blob, fileName);
+    } catch (error) {
+      console.error('Download failed:', error);
+    }
   };
 
   return (
@@ -200,13 +216,24 @@ export default function ExportManager({ config, students }: Props) {
                   <p className="text-xs text-foreground-muted">Avg: {student.finalAverage}</p>
                 </div>
               </div>
-              <button
-                onClick={() => handlePreview(student)}
-                className="p-2 text-foreground-muted/50 hover:text-accent hover:bg-accent/10 rounded-lg transition-all cursor-pointer"
-                title="Preview PDF"
-              >
-                <Eye size={18} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handlePreview(student)}
+                  disabled={!config.templateImages.page1}
+                  className="p-2 text-foreground-muted/50 hover:text-accent hover:bg-accent/10 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Preview PDF"
+                >
+                  <Eye size={18} />
+                </button>
+                <button
+                  onClick={() => handleDownloadSingle(student)}
+                  disabled={!config.templateImages.page1}
+                  className="p-2 text-foreground-muted/50 hover:text-accent hover:bg-accent/10 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Download PDF"
+                >
+                  <Download size={18} />
+                </button>
+              </div>
             </div>
           ))}
 
@@ -223,8 +250,7 @@ export default function ExportManager({ config, students }: Props) {
         <div className="relative z-10">
           <h4 className="text-xl font-medium tracking-tight mb-2">Bulk Processing</h4>
           <p className="text-white/80 text-sm max-w-md">
-            The system will generate individual PDF files for each student. 
-            Make sure to allow multiple downloads in your browser settings.
+            The system will generate individual PDF files for each student and bundle them into a single ZIP file for easy downloading.
           </p>
         </div>
         <div className="absolute right-[-20px] bottom-[-20px] opacity-10">
