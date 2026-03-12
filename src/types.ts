@@ -44,6 +44,9 @@ export interface CertificateField {
 }
 
 export interface AppConfig {
+  appName?: string;
+  appLogo?: string;
+  favicon?: string;
   defaultProgramName?: string;
   assessmentCategories: AssessmentCategory[];
   certificateFields: CertificateField[];

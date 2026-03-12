@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type MouseEvent, type ChangeEvent } from 'react';
-import { Upload, Trash2, Move, Type, Palette, Bold, ChevronLeft, ChevronRight, Plus, Type as FontIcon, AlignLeft, AlignCenter, AlignRight, Pipette, Copy } from 'lucide-react';
+import { Upload, Trash2, Move, Type, Palette, Bold, ChevronLeft, ChevronRight, Plus, Type as FontIcon, AlignLeft, AlignCenter, AlignRight, Pipette, Copy, Save, Download, FolderOpen } from 'lucide-react';
 import type { AppConfig, CertificateField, CustomFont, StudentData } from '../types';
 import { cn } from '../utils/cn';
 
@@ -9,15 +9,68 @@ interface Props {
   students: StudentData[];
 }
 
+interface SavedTemplate {
+  id: string;
+  name: string;
+  config: AppConfig;
+  createdAt: number;
+}
+
 export default function CertificateDesigner({ config, setConfig, students }: Props) {
-  const [activePage, setActivePage] = useState<1 | 2>(1);
+  const [activeTab, setActiveTab] = useState<'page1' | 'page2' | 'templates'>('page1');
+  const activePage = activeTab === 'page2' ? 2 : 1;
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const [editorHeight, setEditorHeight] = useState<number>(540);
   const [previewHeight, setPreviewHeight] = useState<number>(540);
+  const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
 
   useEffect(() => {
+    const saved = localStorage.getItem('certificate_templates');
+    if (saved) {
+      try {
+        setSavedTemplates(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to parse saved templates', e);
+      }
+    }
+  }, []);
+
+  const saveCurrentAsTemplate = () => {
+    const name = prompt('Enter a name for this template:');
+    if (!name) return;
+
+    const newTemplate: SavedTemplate = {
+      id: `template-${Date.now()}`,
+      name,
+      config,
+      createdAt: Date.now()
+    };
+
+    const updated = [...savedTemplates, newTemplate];
+    setSavedTemplates(updated);
+    localStorage.setItem('certificate_templates', JSON.stringify(updated));
+    alert('Template saved successfully!');
+  };
+
+  const loadTemplate = (template: SavedTemplate) => {
+    if (confirm('Are you sure you want to load this template? Your current design will be overwritten.')) {
+      setConfig(template.config);
+      setActiveTab('page1');
+    }
+  };
+
+  const deleteTemplate = (id: string) => {
+    if (confirm('Are you sure you want to delete this template?')) {
+      const updated = savedTemplates.filter(t => t.id !== id);
+      setSavedTemplates(updated);
+      localStorage.setItem('certificate_templates', JSON.stringify(updated));
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'templates') return;
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -28,9 +81,10 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, [config.templateImages.page1, config.templateImages.page2, activePage]);
+  }, [config.templateImages.page1, config.templateImages.page2, activeTab]);
 
   useEffect(() => {
+    if (activeTab === 'templates') return;
     if (!previewContainerRef.current) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -41,9 +95,10 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
     });
     observer.observe(previewContainerRef.current);
     return () => observer.disconnect();
-  }, [config.templateImages.page1, config.templateImages.page2, activePage]);
+  }, [config.templateImages.page1, config.templateImages.page2, activeTab]);
 
   useEffect(() => {
+    if (activeTab === 'templates') return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedFieldId) return;
       
@@ -83,7 +138,7 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedFieldId, config.certificateFields]);
+  }, [selectedFieldId, config.certificateFields, activeTab]);
 
   const handleImageUpload = (page: 1 | 2, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -259,6 +314,91 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
   const selectedField = config.certificateFields.find(f => f.id === selectedFieldId);
   const currentTemplate = activePage === 1 ? config.templateImages.page1 : config.templateImages.page2;
 
+  if (activeTab === 'templates') {
+    return (
+      <div className="flex flex-col gap-6 flex-1 overflow-y-auto pb-10">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('page1')}
+              className="px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer bg-white/5 text-foreground-muted hover:bg-white/10"
+            >
+              Page 1 (Front)
+            </button>
+            <button
+              onClick={() => setActiveTab('page2')}
+              className="px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer bg-white/5 text-foreground-muted hover:bg-white/10"
+            >
+              Page 2 (Back)
+            </button>
+            <button
+              onClick={() => setActiveTab('templates')}
+              className="px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer bg-accent text-white shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)]"
+            >
+              Saved Templates
+            </button>
+          </div>
+          <button
+            onClick={saveCurrentAsTemplate}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-xl text-sm font-medium hover:bg-emerald-500/20 transition-colors cursor-pointer"
+          >
+            <Save size={18} />
+            Save Current Design
+          </button>
+        </div>
+
+        <div className="bg-surface/80 backdrop-blur-xl rounded-2xl border border-border-default shadow-elevation-low p-8">
+          <h3 className="text-xl font-medium tracking-tight text-foreground mb-2">Saved Templates</h3>
+          <p className="text-sm text-foreground-muted mb-8">Manage your locally saved certificate designs.</p>
+
+          {savedTemplates.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed border-border-default rounded-2xl bg-white/5">
+              <FolderOpen className="mx-auto text-foreground-muted/30 mb-4" size={48} />
+              <p className="text-foreground-muted font-medium">No saved templates found</p>
+              <p className="text-sm text-foreground-muted/50 mt-1">Save your current design to see it here.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {savedTemplates.map(template => (
+                <div key={template.id} className="bg-white/5 border border-border-default rounded-2xl p-4 flex flex-col gap-4 hover:bg-white/10 transition-colors">
+                  <div className="aspect-[4/3] bg-surface-elevated rounded-xl overflow-hidden border border-border-default/50 relative flex items-center justify-center">
+                    {template.config.templateImages.page1 ? (
+                      <img src={template.config.templateImages.page1} alt={template.name} className="max-w-full max-h-full object-contain" />
+                    ) : (
+                      <span className="text-foreground-muted/50 text-sm">No Image</span>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">{template.name}</h4>
+                    <p className="text-xs text-foreground-muted mt-1">
+                      {new Date(template.createdAt).toLocaleDateString()} • {template.config.certificateFields.length} fields
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-auto pt-2">
+                    <button
+                      onClick={() => loadTemplate(template)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 bg-accent/10 text-accent hover:bg-accent/20 rounded-xl text-sm font-medium transition-colors cursor-pointer"
+                    >
+                      <Download size={16} />
+                      Load
+                    </button>
+                    <button
+                      onClick={() => deleteTemplate(template.id)}
+                      className="p-2 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+                      title="Delete template"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 flex-1 overflow-y-auto pb-10">
       {/* Top: Editor & Preview */}
@@ -268,31 +408,47 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setActivePage(1)}
+                onClick={() => setActiveTab('page1')}
                 className={cn(
                   "px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
-                  activePage === 1 ? "bg-accent text-white shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)]" : "bg-white/5 text-foreground-muted hover:bg-white/10"
+                  activeTab === 'page1' ? "bg-accent text-white shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)]" : "bg-white/5 text-foreground-muted hover:bg-white/10"
                 )}
               >
                 Page 1 (Front)
               </button>
               <button
-                onClick={() => setActivePage(2)}
+                onClick={() => setActiveTab('page2')}
                 className={cn(
                   "px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer",
-                  activePage === 2 ? "bg-accent text-white shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)]" : "bg-white/5 text-foreground-muted hover:bg-white/10"
+                  activeTab === 'page2' ? "bg-accent text-white shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)]" : "bg-white/5 text-foreground-muted hover:bg-white/10"
                 )}
               >
                 Page 2 (Back)
               </button>
+              <button
+                onClick={() => setActiveTab('templates')}
+                className="px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer bg-white/5 text-foreground-muted hover:bg-white/10"
+              >
+                Saved Templates
+              </button>
             </div>
-            <button
-              onClick={addField}
-              className="flex items-center gap-2 px-4 py-2 bg-accent/10 text-accent rounded-xl text-sm font-medium hover:bg-accent/20 transition-colors cursor-pointer"
-            >
-              <Plus size={18} />
-              Add Field
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={saveCurrentAsTemplate}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 text-emerald-400 rounded-xl text-sm font-medium hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                title="Save as Template"
+              >
+                <Save size={16} />
+                <span className="hidden sm:inline">Save</span>
+              </button>
+              <button
+                onClick={addField}
+                className="flex items-center gap-2 px-4 py-2 bg-accent/10 text-accent rounded-xl text-sm font-medium hover:bg-accent/20 transition-colors cursor-pointer"
+              >
+                <Plus size={18} />
+                Add Field
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 bg-surface-elevated rounded-xl overflow-hidden relative flex items-center justify-center p-4 border border-border-default/50">

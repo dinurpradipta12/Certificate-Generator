@@ -1,5 +1,5 @@
 import { useState, useRef, type DragEvent } from 'react';
-import { Upload, FileText, CheckCircle2, AlertCircle, Trash2, Download } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Trash2, Download, Edit2, X, Save } from 'lucide-react';
 import Papa from 'papaparse';
 import type { AppConfig, StudentData } from '../types';
 import { cn } from '../utils/cn';
@@ -14,6 +14,44 @@ export default function DataImporter({ config, students, setStudents }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<StudentData | null>(null);
+
+  const startEditing = (student: StudentData) => {
+    setEditingId(student.id);
+    setEditFormData({ ...student, categoryAverages: { ...student.categoryAverages } });
+  };
+
+  const saveEdit = () => {
+    if (editFormData) {
+      setStudents(students.map(s => s.id === editFormData.id ? editFormData : s));
+    }
+    setEditingId(null);
+    setEditFormData(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditFormData(null);
+  };
+
+  const handleEditChange = (field: keyof StudentData, value: any) => {
+    if (!editFormData) return;
+    setEditFormData({ ...editFormData, [field]: value });
+  };
+
+  const handleCategoryAvgChange = (catId: string, value: string) => {
+    if (!editFormData) return;
+    const numValue = parseFloat(value) || 0;
+    setEditFormData({
+      ...editFormData,
+      categoryAverages: {
+        ...editFormData.categoryAverages,
+        [catId]: numValue
+      }
+    });
+  };
 
   const calculateGrade = (avg: number) => {
     if (avg >= 90) return 'A+';
@@ -251,30 +289,115 @@ export default function DataImporter({ config, students, setStudents }: Props) {
                   <th className="px-6 py-4">Final Avg</th>
                   <th className="px-6 py-4">Grade</th>
                   <th className="px-6 py-4">Description</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-default">
                 {students.map((student) => (
                   <tr key={student.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4 font-medium text-foreground">{student.name}</td>
-                    <td className="px-6 py-4 text-foreground-muted">{student.periode}</td>
-                    <td className="px-6 py-4 text-foreground-muted">{student.certId}</td>
-                    {config.assessmentCategories.map(c => (
-                      <td key={c.id} className="px-6 py-4 text-foreground-muted">{student.categoryAverages[c.id] || 0}</td>
-                    ))}
-                    <td className="px-6 py-4 font-bold text-accent">{student.finalAverage}</td>
-                    <td className="px-6 py-4">
-                      <span className={cn(
-                        "px-2 py-1 rounded-lg text-xs font-medium",
-                        student.grade.startsWith('A') ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                        student.grade.startsWith('B') ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
-                        student.grade.startsWith('C') ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                        "bg-red-500/10 text-red-400 border border-red-500/20"
-                      )}>
-                        {student.grade}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs italic text-foreground-muted/50">{student.description}</td>
+                    {editingId === student.id && editFormData ? (
+                      <>
+                        <td className="px-6 py-4">
+                          <input 
+                            type="text" 
+                            value={editFormData.name} 
+                            onChange={(e) => handleEditChange('name', e.target.value)}
+                            className="w-full bg-surface border border-border-default rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:border-accent"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <input 
+                            type="text" 
+                            value={editFormData.periode} 
+                            onChange={(e) => handleEditChange('periode', e.target.value)}
+                            className="w-full bg-surface border border-border-default rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:border-accent"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <input 
+                            type="text" 
+                            value={editFormData.certId} 
+                            onChange={(e) => handleEditChange('certId', e.target.value)}
+                            className="w-full bg-surface border border-border-default rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:border-accent"
+                          />
+                        </td>
+                        {config.assessmentCategories.map(c => (
+                          <td key={c.id} className="px-6 py-4">
+                            <input 
+                              type="number" 
+                              value={editFormData.categoryAverages[c.id] || 0} 
+                              onChange={(e) => handleCategoryAvgChange(c.id, e.target.value)}
+                              className="w-16 bg-surface border border-border-default rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:border-accent"
+                            />
+                          </td>
+                        ))}
+                        <td className="px-6 py-4">
+                          <input 
+                            type="number" 
+                            value={editFormData.finalAverage} 
+                            onChange={(e) => handleEditChange('finalAverage', parseFloat(e.target.value) || 0)}
+                            className="w-16 bg-surface border border-border-default rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:border-accent"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <input 
+                            type="text" 
+                            value={editFormData.grade} 
+                            onChange={(e) => handleEditChange('grade', e.target.value)}
+                            className="w-12 bg-surface border border-border-default rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:border-accent"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <input 
+                            type="text" 
+                            value={editFormData.description} 
+                            onChange={(e) => handleEditChange('description', e.target.value)}
+                            className="w-full bg-surface border border-border-default rounded px-2 py-1 text-sm text-foreground focus:outline-none focus:border-accent"
+                          />
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button onClick={saveEdit} className="p-1 text-emerald-400 hover:bg-emerald-400/10 rounded transition-colors" title="Save">
+                              <Save size={16} />
+                            </button>
+                            <button onClick={cancelEdit} className="p-1 text-red-400 hover:bg-red-400/10 rounded transition-colors" title="Cancel">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-6 py-4 font-medium text-foreground">{student.name}</td>
+                        <td className="px-6 py-4 text-foreground-muted">{student.periode}</td>
+                        <td className="px-6 py-4 text-foreground-muted">{student.certId}</td>
+                        {config.assessmentCategories.map(c => (
+                          <td key={c.id} className="px-6 py-4 text-foreground-muted">{student.categoryAverages[c.id] || 0}</td>
+                        ))}
+                        <td className="px-6 py-4 font-bold text-accent">{student.finalAverage}</td>
+                        <td className="px-6 py-4">
+                          <span className={cn(
+                            "px-2 py-1 rounded-lg text-xs font-medium",
+                            student.grade.startsWith('A') ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                            student.grade.startsWith('B') ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                            student.grade.startsWith('C') ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                            "bg-red-500/10 text-red-400 border border-red-500/20"
+                          )}>
+                            {student.grade}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs italic text-foreground-muted/50">{student.description}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={() => startEditing(student)}
+                            className="p-1.5 text-foreground-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors"
+                            title="Edit student"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>

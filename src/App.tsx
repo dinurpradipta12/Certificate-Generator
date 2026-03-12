@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Settings, 
   Upload, 
@@ -15,10 +15,16 @@ import GradingConfig from './components/GradingConfig';
 import DataImporter from './components/DataImporter';
 import CertificateDesigner from './components/CertificateDesigner';
 import ExportManager from './components/ExportManager';
+import GlobalSettingsModal from './components/GlobalSettingsModal';
+import UpdateNotifier from './components/UpdateNotifier';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'config' | 'import' | 'design' | 'export'>('config');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [config, setConfig] = useState<AppConfig>({
+    appName: 'CertiBatch',
+    appLogo: '',
+    favicon: '',
     defaultProgramName: 'Mini Bootcamp',
     assessmentCategories: [
       {
@@ -76,6 +82,21 @@ export default function App() {
 
   const [students, setStudents] = useState<StudentData[]>([]);
 
+  useEffect(() => {
+    if (config.appName) {
+      document.title = config.appName;
+    }
+    if (config.favicon) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = config.favicon;
+    }
+  }, [config.appName, config.favicon]);
+
   const tabs = [
     { id: 'config', label: 'Grading Config', icon: Settings },
     { id: 'import', label: 'Import Data', icon: Upload },
@@ -98,13 +119,16 @@ export default function App() {
       </div>
 
       {/* Floating Menu */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface/80 backdrop-blur-xl border border-border-default shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-full p-2 flex items-center gap-1 sm:gap-2 w-[95%] md:w-auto max-w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-surface/80 backdrop-blur-xl border border-border-default shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-full p-2 flex items-center gap-1 sm:gap-2 w-max max-w-[98vw] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {/* Logo */}
         <div className="flex items-center gap-3 px-2 sm:px-3 shrink-0">
-          <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-white shadow-[0_0_15px_rgba(94,106,210,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]">
-            <GraduationCap size={16} />
+          <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center text-white shadow-[0_0_15px_rgba(94,106,210,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] overflow-hidden">
+            {config.appLogo ? (
+              <img src={config.appLogo} alt="Logo" className="w-full h-full object-cover" />
+            ) : (
+              <GraduationCap size={16} />
+            )}
           </div>
-          <span className="font-bold text-xs tracking-widest uppercase text-foreground hidden lg:block">CertiBatch</span>
         </div>
         
         <div className="w-px h-6 bg-border-default shrink-0 hidden sm:block" />
@@ -129,6 +153,16 @@ export default function App() {
               )}>{tab.label}</span>
             </button>
           ))}
+          
+          <div className="w-px h-6 bg-border-default shrink-0 mx-1" />
+          
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex items-center justify-center w-10 h-10 shrink-0 rounded-full text-foreground-muted hover:text-foreground hover:bg-white/5 transition-all duration-300 cursor-pointer"
+            title="Global Settings"
+          >
+            <Settings size={16} />
+          </button>
         </div>
       </div>
 
@@ -164,6 +198,15 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
+
+      <GlobalSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        config={config}
+        setConfig={setConfig}
+      />
+      
+      <UpdateNotifier />
     </div>
   );
 }
