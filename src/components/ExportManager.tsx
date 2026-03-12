@@ -12,9 +12,14 @@ interface Props {
 }
 
 export default function ExportManager({ config, students }: Props) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [previewStudent, setPreviewStudent] = useState<StudentData | null>(null);
+  const [exportState, setExportState] = useState<{
+    isExporting: boolean;
+    statusText: string;
+    progress: number;
+  }>({ isExporting: false, statusText: '', progress: 0 });
+  
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processingType, setProcessingType] = useState<'preview' | 'download' | null>(null);
 
   const getImageDimensions = (dataUrl: string): Promise<{ width: number, height: number }> => {
     return new Promise((resolve) => {
@@ -119,52 +124,106 @@ export default function ExportManager({ config, students }: Props) {
 
   const handleExportAll = async () => {
     if (students.length === 0) return;
-    setIsGenerating(true);
-    setProgress(0);
+    setExportState({ isExporting: true, statusText: 'Preparing files...', progress: 0 });
 
     try {
       const zip = new JSZip();
       
       for (let i = 0; i < students.length; i++) {
         const student = students[i];
+        setExportState({ 
+          isExporting: true, 
+          statusText: `Generating PDF for ${student.name} (${i + 1}/${students.length})`, 
+          progress: Math.round(((i) / students.length) * 50) // First 50% is PDF generation
+        });
+        
         const blob = await generatePDF(student);
         const fileName = `Certificate_${student.name.replace(/\s+/g, '_')}.pdf`;
         
         zip.file(fileName, blob);
         
-        setProgress(Math.round(((i + 1) / students.length) * 100));
         // Small delay to allow UI to update and prevent blocking
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(resolve => setTimeout(resolve, 10));
       }
       
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      setExportState({ isExporting: true, statusText: 'Compressing into ZIP file...', progress: 50 });
+      
+      const zipBlob = await zip.generateAsync({ type: 'blob' }, (metadata) => {
+        setExportState({ 
+          isExporting: true, 
+          statusText: `Compressing into ZIP file...`, 
+          progress: 50 + Math.round(metadata.percent / 2) // Next 50% is zipping
+        });
+      });
+      
+      setExportState({ isExporting: true, statusText: 'Downloading...', progress: 100 });
       saveAs(zipBlob, 'Certificates.zip');
       
     } catch (error) {
       console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
     } finally {
-      setIsGenerating(false);
+      setTimeout(() => {
+        setExportState({ isExporting: false, statusText: '', progress: 0 });
+      }, 1000);
     }
   };
 
   const handlePreview = async (student: StudentData) => {
-    const blob = await generatePDF(student);
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+    setProcessingId(student.id);
+    setProcessingType('preview');
+    try {
+      // Small delay to allow UI to update
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const blob = await generatePDF(student);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Preview failed:', error);
+    } finally {
+      setProcessingId(null);
+      setProcessingType(null);
+    }
   };
 
   const handleDownloadSingle = async (student: StudentData) => {
+    setProcessingId(student.id);
+    setProcessingType('download');
     try {
+      // Small delay to allow UI to update
+      await new Promise(resolve => setTimeout(resolve, 10));
       const blob = await generatePDF(student);
       const fileName = `Certificate_${student.name.replace(/\s+/g, '_')}.pdf`;
       saveAs(blob, fileName);
     } catch (error) {
       console.error('Download failed:', error);
+    } finally {
+      setProcessingId(null);
+      setProcessingType(null);
     }
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {/* Progress Overlay */}
+      {exportState.isExporting && (
+        <div className="fixed inset-0 z-[100] bg-background-base/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-border-default rounded-2xl p-8 max-w-md w-full shadow-elevation-high flex flex-col items-center text-center">
+            <Loader2 className="animate-spin text-accent mb-4" size={48} />
+            <h3 className="text-xl font-medium text-foreground mb-2">Generating Certificates</h3>
+            <p className="text-sm text-foreground-muted mb-6">{exportState.statusText}</p>
+            
+            <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-border-default">
+              <div 
+                className="bg-accent h-full transition-all duration-300 ease-out" 
+                style={{ width: `${exportState.progress}%` }}
+              />
+            </div>
+            <p className="text-xs font-medium text-foreground mt-2">{exportState.progress}%</p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-surface/80 backdrop-blur-xl rounded-2xl p-8 border border-border-default shadow-elevation-low">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -173,18 +232,18 @@ export default function ExportManager({ config, students }: Props) {
           </div>
           <button
             onClick={handleExportAll}
-            disabled={isGenerating || students.length === 0 || !config.templateImages.page1}
+            disabled={exportState.isExporting || students.length === 0 || !config.templateImages.page1}
             className={cn(
               "flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium transition-all cursor-pointer",
-              isGenerating || students.length === 0 || !config.templateImages.page1
+              exportState.isExporting || students.length === 0 || !config.templateImages.page1
                 ? "bg-white/5 text-foreground-muted/50 cursor-not-allowed border border-border-default"
                 : "bg-accent text-white hover:bg-accent-bright shadow-[0_0_0_1px_rgba(94,106,210,0.5),0_4px_12px_rgba(94,106,210,0.3),inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:shadow-[0_0_0_1px_rgba(104,114,217,0.6),0_8px_20px_rgba(94,106,210,0.4),inset_0_1px_0_0_rgba(255,255,255,0.3)] hover:-translate-y-0.5"
             )}
           >
-            {isGenerating ? (
+            {exportState.isExporting ? (
               <>
                 <Loader2 className="animate-spin" size={18} />
-                Generating {progress}%
+                Generating...
               </>
             ) : (
               <>
@@ -220,19 +279,19 @@ export default function ExportManager({ config, students }: Props) {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handlePreview(student)}
-                  disabled={!config.templateImages.page1}
+                  disabled={!config.templateImages.page1 || processingId === student.id}
                   className="p-2 text-foreground-muted/50 hover:text-accent hover:bg-accent/10 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Preview PDF"
                 >
-                  <Eye size={18} />
+                  {processingId === student.id && processingType === 'preview' ? <Loader2 size={18} className="animate-spin text-accent" /> : <Eye size={18} />}
                 </button>
                 <button
                   onClick={() => handleDownloadSingle(student)}
-                  disabled={!config.templateImages.page1}
+                  disabled={!config.templateImages.page1 || processingId === student.id}
                   className="p-2 text-foreground-muted/50 hover:text-accent hover:bg-accent/10 rounded-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Download PDF"
                 >
-                  <Download size={18} />
+                  {processingId === student.id && processingType === 'download' ? <Loader2 size={18} className="animate-spin text-accent" /> : <Download size={18} />}
                 </button>
               </div>
             </div>
