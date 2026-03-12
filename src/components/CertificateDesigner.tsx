@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type MouseEvent, type ChangeEvent } from 'react';
-import { Upload, Trash2, Move, Type, Palette, Bold, ChevronLeft, ChevronRight, Plus, Type as FontIcon, AlignLeft, AlignCenter, AlignRight, Pipette } from 'lucide-react';
+import { Upload, Trash2, Move, Type, Palette, Bold, ChevronLeft, ChevronRight, Plus, Type as FontIcon, AlignLeft, AlignCenter, AlignRight, Pipette, Copy } from 'lucide-react';
 import type { AppConfig, CertificateField, CustomFont, StudentData } from '../types';
 import { cn } from '../utils/cn';
 
@@ -13,6 +13,35 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
   const [activePage, setActivePage] = useState<1 | 2>(1);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [editorHeight, setEditorHeight] = useState<number>(540);
+  const [previewHeight, setPreviewHeight] = useState<number>(540);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          setEditorHeight(entry.contentRect.height);
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [config.templateImages.page1, config.templateImages.page2, activePage]);
+
+  useEffect(() => {
+    if (!previewContainerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          setPreviewHeight(entry.contentRect.height);
+        }
+      }
+    });
+    observer.observe(previewContainerRef.current);
+    return () => observer.disconnect();
+  }, [config.templateImages.page1, config.templateImages.page2, activePage]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -137,6 +166,24 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
       certificateFields: config.certificateFields.filter((f) => f.id !== id),
     });
     setSelectedFieldId(null);
+  };
+
+  const duplicateField = (id: string) => {
+    const fieldToDuplicate = config.certificateFields.find(f => f.id === id);
+    if (!fieldToDuplicate) return;
+
+    const newField: CertificateField = {
+      ...fieldToDuplicate,
+      id: `field-${Date.now()}`,
+      x: Math.min(100, fieldToDuplicate.x + 2), // Offset slightly so it doesn't perfectly overlap
+      y: Math.min(100, fieldToDuplicate.y + 2),
+    };
+
+    setConfig({
+      ...config,
+      certificateFields: [...config.certificateFields, newField],
+    });
+    setSelectedFieldId(newField.id);
   };
 
   const handleMouseDown = (id: string, e: MouseEvent) => {
@@ -269,7 +316,7 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
                       left: `${field.x}%`,
                       top: `${field.y}%`,
                       transform: `translate(${field.align === 'left' ? '0' : field.align === 'right' ? '-100%' : '-50%'}, -50%)`,
-                      fontSize: `${field.fontSize}px`,
+                      fontSize: `${field.fontSize * (editorHeight / 540)}px`,
                       color: field.color,
                       fontWeight: field.bold ? 'bold' : 'normal',
                       fontFamily: field.fontFamily,
@@ -315,6 +362,7 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
           <div className="flex-1 bg-surface-elevated rounded-xl overflow-hidden relative flex items-center justify-center p-4 border border-border-default/50">
             {currentTemplate ? (
               <div 
+                ref={previewContainerRef}
                 className="relative shadow-elevation-high bg-white max-h-full max-w-full pointer-events-none"
                 style={{ backgroundImage: `url(${currentTemplate})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }}
               >
@@ -328,7 +376,7 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
                       left: `${field.x}%`,
                       top: `${field.y}%`,
                       transform: `translate(${field.align === 'left' ? '0' : field.align === 'right' ? '-100%' : '-50%'}, -50%)`,
-                      fontSize: `${field.fontSize}px`,
+                      fontSize: `${field.fontSize * (previewHeight / 540)}px`,
                       color: field.color,
                       fontWeight: field.bold ? 'bold' : 'normal',
                       fontFamily: field.fontFamily,
@@ -480,7 +528,14 @@ export default function CertificateDesigner({ config, setConfig, students }: Pro
               </button>
             </div>
 
-            <div className="pb-1">
+            <div className="pb-1 flex gap-2">
+              <button
+                onClick={() => duplicateField(selectedField.id)}
+                className="h-10 px-4 text-accent font-medium text-sm flex items-center justify-center gap-2 hover:bg-accent/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-accent/20"
+              >
+                <Copy size={16} />
+                Duplicate
+              </button>
               <button
                 onClick={() => removeField(selectedField.id)}
                 className="h-10 px-4 text-red-400 font-medium text-sm flex items-center justify-center gap-2 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-500/20"

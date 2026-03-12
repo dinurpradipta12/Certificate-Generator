@@ -69,18 +69,18 @@ export default function ExportManager({ config, students }: Props) {
         let text = '';
         if (field.type.startsWith('category_avg:')) {
           const catId = field.type.split(':')[1];
-          text = (student.categoryAverages[catId] || 0).toString();
+          text = (student.categoryAverages?.[catId] || 0).toString();
         } else {
           switch (field.type) {
-            case 'name': text = student.name; break;
+            case 'name': text = student.name || ''; break;
             case 'program': text = student.program || config.defaultProgramName || ''; break;
-            case 'certId': text = student.certId; break;
-            case 'periode': text = student.periode; break;
-            case 'average': text = student.finalAverage.toString(); break;
-            case 'grade': text = student.grade; break;
-            case 'description': text = student.description; break;
+            case 'certId': text = student.certId || ''; break;
+            case 'periode': text = student.periode || ''; break;
+            case 'average': text = student.finalAverage?.toString() || '0'; break;
+            case 'grade': text = student.grade || ''; break;
+            case 'description': text = student.description || ''; break;
             case 'date': text = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); break;
-            case 'custom': text = field.label; break;
+            case 'custom': text = field.label || ''; break;
           }
         }
 
@@ -98,13 +98,14 @@ export default function ExportManager({ config, students }: Props) {
 
         // Scale font size based on the export height (assuming 540px was the baseline for 1x font size)
         const scaleFactor = height / 540;
-        pdf.setFontSize(field.fontSize * scaleFactor);
+        // jsPDF setFontSize takes points (pt). 1px = 0.75pt.
+        pdf.setFontSize(field.fontSize * scaleFactor * 0.75);
         pdf.setTextColor(field.color);
         
         const x = (field.x / 100) * width;
         const y = (field.y / 100) * height;
         
-        pdf.text(text, x, y, { align: field.align || 'center' });
+        pdf.text(String(text || ''), x, y, { align: field.align || 'center', baseline: 'middle' });
       });
     };
 
